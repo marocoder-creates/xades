@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Szczegóły przepływu XAdES-T</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #21262d;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --muted: #8b949e;
+            --blue: #58a6ff;
+            --green: #3fb950;
+            --red: #f85149;
+            --yellow: #d29922;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            padding: 2.5rem 1.5rem;
+            line-height: 1.6;
+        }
+
+        /* ── Header ── */
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--blue), #bc8cff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .back-link {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+            padding: 0.3rem 0.8rem;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--blue);
+            border-color: var(--blue);
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+        }
+
+        /* ── Summary & Content ── */
+        .summary-box {
+            background: rgba(88, 166, 255, 0.1);
+            border: 1px solid var(--blue);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .summary-box h2 {
+            color: var(--blue);
+            font-size: 1.2rem;
+            margin-bottom: 0.8rem;
+        }
+
+        section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h2.section-title {
+            font-size: 1.3rem;
+            color: #fff;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        ul,
+        ol {
+            padding-left: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            margin-bottom: 1rem;
+        }
+
+        strong {
+            color: #fff;
+        }
+
+        .code {
+            font-family: monospace;
+            background: var(--surface2);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            color: var(--yellow);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Architektura Uwierzytelniania XAdES-T</h1>
+        <div style="margin-top: 1rem;">
+            <a class="back-link" href="index.php">← Wróć do Demo</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Summary Box -->
+        <div class="summary-box">
+            <h2>Podsumowanie Architektury</h2>
+            <p>
+                Platforma wykorzystuje proces <strong>Challenge-Response</strong> oparty na kwalifikowanych lub własnych
+                certyfikatach cyfrowych połączonych z rygorystycznym podpisem <strong>XAdES-T (XML Advanced Electronic
+                    Signatures with Time-stamp)</strong>.
+            </p>
+            <p style="margin-bottom: 0;">
+                Zamiast tradycyjnego logowania hasłem, klient podpisuje unikalny dokument XML (wyzwanie) kluczem
+                prywatnym, dodając dowód w czasie używając serwera TSA (Time Stamping Authority). Jeśli podpis i
+                znacznik czasu są weryfikowane pozytywnie, wydawane są krótkoterminowe tokeny dostępowe (JWT/Opaque)
+                połączone z systemem dynamicznych uprawnień sprawdzanych w czasie rzeczywistym.
+            </p>
+        </div>
+
+        <section>
+            <h2 class="section-title"><span>1.</span> Generowanie certyfikatu i wyzwania</h2>
+            <p>
+                Proces rozpoczyna się od posiadania pary kluczy kryptograficznych (w demo generujemy certyfikat RSA-2048
+                automatycznie na podstawie wpisanego identyfikatora i nazwy organizacji).
+            </p>
+            <p>
+                Klient odpytuje serwer API o wyzwanie (tzw. <strong>Challenge</strong>). W odpowiedzi serwer generuje
+                unikalny dokument XML, który zawiera losowe wartości oraz znacznik czasowy gwarantujące jednorazowość
+                (zapobiega to atakom powtórzeniowym - <em>replay attacks</em>).
+            </p>
+        </section>
+
+        <section>
+            <h2 class="section-title"><span>2.</span> Podpis kryptograficzny XAdES-T</h2>
+            <p>
+                Klient używa swojego klucza prywatnego do podpisania otrzymanego wyzwania w formacie
+                <strong>XAdES-T</strong>. Format ten różni się od standardowego podpisu XML-DSig o jeden kluczowy
+                element:
+            </p>
+            <ul>
+                <li>Złożony podpis jest pakowany w określone ramy strukturalne XML.</li>
+                <li>Przed wysłaniem do API, klient lub dedykowana biblioteka musi się skontaktować z zewnętrznym Urzędem
+                    Znakowania Czasem (TSA - Time Stamping Authority, w demie używany jest darmowy serwer
+                    <em>DigiCert</em>).
+                </li>
+                <li>Znacznik czasu zostaje zakodowany do zawartości podpisu jako potwierdzenie (dowód nietolerujący
+                    zaprzeczenia), w jakiej dokładnie sekundzie podpis został złożony.</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2 class="section-title"><span>3.</span> Weryfikacja serwerowa i wydawanie Tokenów</h2>
+            <p>
+                Serwer otrzymuje załączony plik z podpisem na serwerowy endpoint:
+            </p>
+            <ol>
+                <li>API dekoduje podpis i sprawdza integralność struktury XML.</li>
+                <li>Weryfikowany jest łańcuch certyfikatów klienta od wskazanego węzła Trust Store (w demie użyto
+                    self-signed na cele deweloperskie).</li>
+                <li>Wyodrębniany jest znacznik czasu (Timestamp) - z weryfikacją certyfikatu serwisu TSA.</li>
+                <li>Wyodrębnia się unikalny dokument Challenge. Sprawdzane jest, czy Challenge ten był wystawiony przez
+                    serwer i czy nie uległ przedawnieniu/zużyciu.</li>
+                <li>System autoryzacji sprawdza bazę, by upewnić się, czy dana organizacja ma włączone uprawnienie
+                    dostępu logowania (<span class="code">can_login</span>).</li>
+            </ol>
+            <p>
+                Gdy wszystkie warunki są spełnione, API generuje parę tokenów <strong>Access Token</strong> (do
+                uwierzytelniania w bieżących zapytaniach) oraz <strong>Refresh Token</strong> (do odnawiania sesji bez
+                ponownego wprowadzania XAdES-T) i odsyła je do panelu klienta.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="section-title"><span>4.</span> Dostęp do zasobów i autoryzacja "Live"</h2>
+            <p>
+                Do każdego żądania w ramach chronionego API serwera, klient dołącza wygenerowany token w nagłówku <span
+                    class="code">Authorization: Bearer ...</span>.
+            </p>
+            <ul>
+                <li><strong>Weryfikacja Tokenu:</strong> Silnik autoryzacyjny sprawdza zawartość magazynu (Memcached).
+                    Jeśli token został unieważniony przez administratora, odrzuci go komunikatem <em>"Token został
+                        unieważniony przez administratora"</em>.</li>
+                <li><strong>Dynamiczne sprawdzanie uprawnień:</strong> Choć sam identyfikator organizacji pochodzi z
+                    tokenu (bezstanowo powiązanego z sesją), jej dokładne uprawnienia do API (np. <span
+                        class="code">can_access</span>, <span class="code">list_clients</span>) sprawdzane są za każdym
+                    razem dynamicznie z bazy danych (Magazynu Uprawnień). </li>
+            </ul>
+            <p>
+                Pozwala to administratorom systemu natychmiastowo odebrać konkretne przywileje (poprzez panel na stronie
+                "Uprawnienia") bez naruszania aktualnie włączonych urządzeń czy żądania natychmiastowego zamknięcia
+                całych sesji logowania.
+            </p>
+        </section>
+
+        <section>
+            <h2 class="section-title"><span>5.</span> Odwołanie tokenów w panelu Admina</h2>
+            <p>
+                Poprzez odrębny pulpit administracyjny (<span class="code">admin.php</span>) wszystkie wygenerowane
+                żądania sesji są monitorowane. W razie ewentualnego nadużycia, przypisany pracownik może natychmiast
+                odwołać skompromitowany Token Access. Skutkuje to pozostawieniem w pamięci ukrytych znaczników
+                przedawnienia: zablokowany token zatrzymuje się w stacji obronnej i wymusza zwrot błędu HTTP 401 "Ten
+                token dostępu został unieważniony..." bez kasowania tożsamości.
+            </p>
+        </section>
+    </div>
+
+</body>
+
+</html>
